@@ -411,14 +411,14 @@
                     <label class="block text-xs font-medium text-gray-400 mb-1">Usuario</label>
                     <div class="relative">
                         <i class="ph ph-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg"></i>
-                        <input type="text" value="admin" required class="w-full bg-tech-900/80 border border-tech-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:border-tech-accent outline-none transition-all">
+                        <input type="text" id="loginUser" value="admin" required class="w-full bg-tech-900/80 border border-tech-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:border-tech-accent outline-none transition-all">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">Contraseña</label>
                     <div class="relative">
                         <i class="ph ph-lock-key absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg"></i>
-                        <input type="password" value="1234" required class="w-full bg-tech-900/80 border border-tech-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:border-tech-accent outline-none transition-all">
+                        <input type="password" id="loginPass" value="1234" required class="w-full bg-tech-900/80 border border-tech-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:border-tech-accent outline-none transition-all">
                     </div>
                 </div>
 
@@ -441,31 +441,7 @@
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
 
     <script>
-        let ticketCounter = 1006;
-        let repairs = [
-            {
-                id: 'TK-1004',
-                date: new Date(Date.now() - 86400000).toLocaleDateString(),
-                clientName: 'Carlos Mendoza',
-                phone: '0414-1234567',
-                type: 'PC',
-                model: 'Asus ROG Strix',
-                issue: 'No enciende, luz de batería parpadea',
-                price: 45.00,
-                status: 'pending' // pending, progress, completed
-            },
-            {
-                id: 'TK-1005',
-                date: new Date().toLocaleDateString(),
-                clientName: 'María García',
-                phone: '0424-9876543',
-                type: 'Telefono',
-                model: 'Samsung Galaxy S22',
-                issue: 'Pantalla rota y táctil no responde',
-                price: 85.00,
-                status: 'progress'
-            }
-        ];
+        let repairs;
 
         const modal = document.getElementById('repairModal');
         const modalContent = document.getElementById('modalContent');
@@ -473,20 +449,34 @@
         const tableBody = document.getElementById('table-body');
         const emptyState = document.getElementById('empty-state');
 
-        function completeLogin() {
-            const loginView = document.getElementById('loginView');
-            if (loginView) {
-                loginView.classList.add('opacity-0', 'scale-95');
-                setTimeout(() => {
-                    loginView.classList.add('hidden');
-                    showToast('¡Bienvenido a FixTech!', 'success');
-                }, 300);
-            }
-        }
+        async function handleLogin(event) {
+            event.preventDefault(); // Evita que la página recargue
 
-        function handleLogin(e) {
-            if (e) e.preventDefault();
-            completeLogin();
+            const userInput = document.getElementById('loginUser').value.trim();
+            const passInput = document.getElementById('loginPass').value.trim();
+
+            // Credenciales por defecto provisionales
+            const defaultUser = 'adminCristian';
+            const defaultPass = 'cristianAdmin';
+
+            if (userInput === defaultUser && passInput === defaultPass) {
+                const loginView = document.getElementById('loginView');
+                if (loginView) {
+                    loginView.classList.add('opacity-0', 'scale-95');
+                    setTimeout(async () => {
+                        loginView.classList.add('hidden');
+                        showToast('¡Bienvenido a FixTech!', 'success');
+                        
+                        // Carga la tabla con los datos reales de tu base de datos al entrar
+                        if (typeof renderTable === 'function') {
+                            await renderTable();
+                        }
+                    }, 300);
+                }
+            } else {
+                // Mensaje de error si las credenciales no coinciden
+                showToast('Usuario o contraseña incorrectos', 'error');
+            }
         }
 
         function handleLogout() {
@@ -532,76 +522,114 @@
             document.getElementById('stat-completed').innerText = completed + 24; // Added base number for visual effect
         }
 
-        function renderTable() {
-            tableBody.innerHTML = '';
-            
-            if (repairs.length === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-                
-                // Sort by newest first
-                const sortedRepairs = [...repairs].reverse();
-
-                sortedRepairs.forEach(repair => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-tech-800/30 transition-colors group';
-                    
-                    tr.innerHTML = `
-                        <td class="p-4">
-                            <div class="font-medium text-white">${repair.id}</div>
-                            <div class="text-gray-500 text-xs">${repair.date}</div>
-                        </td>
-                        <td class="p-4">
-                            <div class="text-gray-200">${repair.clientName}</div>
-                            <div class="text-gray-500 text-xs">${repair.phone}</div>
-                        </td>
-                        <td class="p-4">
-                            <div class="flex items-center gap-2">
-                                ${getDeviceIcon(repair.type)}
-                                <span class="text-gray-300 font-medium">${repair.model}</span>
-                            </div>
-                        </td>
-                        <td class="p-4 max-w-[200px] truncate text-gray-400" title="${repair.issue}">
-                            ${repair.issue}
-                        </td>
-                        <td class="p-4">
-                            <span class="text-green-400 font-medium">$${parseFloat(repair.price).toFixed(2)}</span>
-                        </td>
-                        <td class="p-4">
-                            ${getStatusBadge(repair.status)}
-                        </td>
-                        <td class="p-4 text-right">
-                            <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="cycleStatus('${repair.id}')" title="Cambiar Estado" class="p-1.5 rounded bg-tech-700 hover:bg-tech-accent hover:text-white text-gray-300 transition-colors">
-                                    <i class="ph ph-arrows-clockwise text-lg"></i>
-                                </button>
-                                <button onclick="deleteRepair('${repair.id}')" title="Eliminar" class="p-1.5 rounded bg-tech-700 hover:bg-red-500 hover:text-white text-gray-300 transition-colors">
-                                    <i class="ph ph-trash text-lg"></i>
-                                </button>
-                            </div>
-                        </td>
-                    `;
-                    tableBody.appendChild(tr);
+        async function renderTable() {
+            try {
+                // Hacemos la petición al controlador para obtener los datos de la BD
+                const response = await fetch('./reparacion.php?action=get', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
-            }
-            updateStats();
-        }
-
-        // --- ACTIONS ---
-        function cycleStatus(id) {
-            const index = repairs.findIndex(r => r.id === id);
-            if (index !== -1) {
-                const current = repairs[index].status;
-                if (current === 'pending') repairs[index].status = 'progress';
-                else if (current === 'progress') repairs[index].status = 'completed';
-                else repairs[index].status = 'pending'; // loop back
                 
-                renderTable();
-                showToast(`Estado de ${id} actualizado`, 'info');
+                const result = await response.json();
+                console.log(result);
+                
+                // Si la API devuelve un arreglo directamente o dentro de una propiedad (ej. result.data o result.repairs)
+                // Ajusta esta línea según cómo devuelva los datos tu PHP. Aquí asumimos que devuelve un array o un objeto con .data
+                repairs = Array.isArray(result) ? result : (result.data || []);
+
+                tableBody.innerHTML = '';
+                
+                if (repairs.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                    
+                    // Sort by newest first
+                    const sortedRepairs = [...repairs].reverse();
+
+                    sortedRepairs.forEach(repair => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-tech-800/30 transition-colors group';
+                        
+                        // Nota: Asegúrate de que las propiedades coincidan con los nombres 
+                        // de las columnas en tu base de datos (ej: repair.repair_date, repair.client_name, etc.)
+                        tr.innerHTML = `
+                            <td class="p-4">
+                                <div class="font-medium text-white">${repair.id}</div>
+                                <div class="text-gray-500 text-xs">${repair.repair_date || repair.date}</div>
+                            </td>
+                            <td class="p-4">
+                                <div class="text-gray-200">${repair.client_name || repair.clientName}</div>
+                                <div class="text-gray-500 text-xs">${repair.phone}</div>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center gap-2">
+                                    ${getDeviceIcon(repair.device_type || repair.type)}
+                                    <span class="text-gray-300 font-medium">${repair.model}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 max-w-[200px] truncate text-gray-400" title="${repair.issue}">
+                                ${repair.issue}
+                            </td>
+                            <td class="p-4">
+                                <span class="text-green-400 font-medium">$${parseFloat(repair.price).toFixed(2)}</span>
+                            </td>
+                            <td class="p-4">
+                                ${getStatusBadge(repair.status)}
+                            </td>
+                            <td class="p-4 text-right">
+                                <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="cycleStatus('${repair.id}')" title="Cambiar Estado" class="p-1.5 rounded bg-tech-700 hover:bg-tech-accent hover:text-white text-gray-300 transition-colors">
+                                        <i class="ph ph-arrows-clockwise text-lg"></i>
+                                    </button>
+                                    <button onclick="deleteRepair('${repair.id}')" title="Eliminar" class="p-1.5 rounded bg-tech-700 hover:bg-red-500 hover:text-white text-gray-300 transition-colors">
+                                        <i class="ph ph-trash text-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+                updateStats();
+
+            } catch (error) {
+                console.error("Error al cargar las reparaciones:", error);
             }
         }
+        // --- ACTIONS ---
+        async function cycleStatus(id) {
+            try {
+                const response = await fetch('./reparacion.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'cycleStatus', // Clave para que el handleRequest sepa qué método ejecutar
+                        id: id                 // El ID del registro que quieres actualizar
+                    })
+                });
 
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log("¡Éxito!", data.message);
+                    console.log("Nuevo estado:", data.newStatus);
+                    
+                    // Vuelve a cargar la tabla para reflejar el cambio de estado visualmente en pantalla
+                    renderTable(); 
+                } else {
+                    // Aquí atrapará el mensaje si ya está completado o si ocurrió un error
+                    console.warn("Aviso:", data.message);
+                    alert(data.message); // Opcional: muestra una alerta al usuario si ya finalizó
+                }
+            } catch (error) {
+                console.error("Error de red al intentar actualizar el estado:", error);
+            }
+        }
         function deleteRepair(id) {
             // Using a custom toast/modal instead of alert() or confirm()
             // For simplicity in prototype, we just delete and show toast
@@ -610,11 +638,10 @@
             showToast(`Ticket ${id} eliminado`, 'error');
         }
 
-        function handleFormSubmit(e) {
+        async function handleFormSubmit(e) {
             e.preventDefault();
             
             const newRepair = {
-                id: `TK-${ticketCounter++}`,
                 date: new Date().toLocaleDateString(),
                 clientName: document.getElementById('clientName').value,
                 phone: document.getElementById('clientPhone').value,
@@ -626,10 +653,29 @@
             };
 
             repairs.push(newRepair);
-            renderTable();
-            closeModal();
-            form.reset();
-            showToast(`Orden ${newRepair.id} registrada con éxito`, 'success');
+            fetch('./reparacion.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newRepair)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Éxito:", data.message);
+                    // Aquí puedes limpiar el formulario o actualizar tu interfaz
+                    renderTable();
+                    closeModal();
+                    form.reset();
+                    showToast(`Orden ${newRepair.id} registrada con éxito`, 'success');
+                } else {
+                    console.error("Error del servidor:", data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Error de conexión:", error);
+            });
         }
 
         // --- MODAL & TOAST SYSTEM ---
@@ -683,12 +729,6 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-
-        // --- INIT ---
-        window.onload = () => {
-            renderTable();
-        };
-
     </script>
 </body>
 </html>
